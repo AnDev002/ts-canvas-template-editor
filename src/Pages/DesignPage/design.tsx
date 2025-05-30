@@ -1,4 +1,4 @@
-import './Design.css'
+import './design.css'
 import DesignContent from './Components/DesignContent/designContent'
 
 interface DesignProps {}
