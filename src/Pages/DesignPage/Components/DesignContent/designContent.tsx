@@ -4,8 +4,8 @@ import type { PanInfo } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import { Box, Typography, Card, CardContent, CardMedia, Grid, IconButton, Drawer, Select, MenuItem, InputLabel, FormControl, Slider, Checkbox, FormControlLabel, Tooltip, Divider, Menu, useMediaQuery } from '@mui/material'; // Removed Hidden
-import { styled, useTheme, alpha } from '@mui/material/styles';
+import { Box, Typography, Card, CardContent, CardMedia, Grid, IconButton, Drawer, Select, MenuItem, InputLabel, FormControl, Slider, Checkbox, FormControlLabel, Tooltip, Divider, Menu, useMediaQuery } from '@mui/material';
+import { ThemeProvider, createTheme, styled, useTheme, alpha } from '@mui/material/styles'; // Added ThemeProvider, createTheme
 import {
     TextFields as TextFieldsIcon,
     Delete as DeleteIcon,
@@ -30,9 +30,9 @@ import {
     PeopleAlt as PeopleAltIcon,
     FileCopy as FileCopyIcon,
     AddCircleOutline as AddCircleOutlineIcon,
-    Menu as MenuIcon, // Added for mobile navigation
-    MoreVert as MoreVertIcon, // Added for mobile header actions
-    Settings as SettingsIcon, // For right sidebar toggle
+    Menu as MenuIcon,
+    MoreVert as MoreVertIcon,
+    Settings as SettingsIcon,
 } from '@mui/icons-material';
 import JSZip from 'jszip';
 
@@ -125,7 +125,7 @@ const TAG_IMAGES = [
 
 const MIN_ITEM_WIDTH = 20;
 const MIN_ITEM_HEIGHT = 20;
-const HANDLE_SIZE = 12; // Slightly larger for touch
+const HANDLE_SIZE = 12; 
 const HANDLE_OFFSET = HANDLE_SIZE / 2;
 const BASE_Z_INDEX = 5;
 
@@ -135,21 +135,64 @@ const MAX_ZOOM = 3.0;
 
 const LEFT_SIDEBAR_WIDTH_DESKTOP = 220;
 const RIGHT_SIDEBAR_WIDTH_DESKTOP = 280;
-const MOBILE_DRAWER_WIDTH = '85vw'; // For pickers and sidebars on mobile
+const MOBILE_DRAWER_WIDTH = '85vw'; 
 
 const DEFAULT_CANVAS_WIDTH = 800;
 const DEFAULT_CANVAS_HEIGHT = 600;
 
 // Styled components
-const Input = styled(TextField)({ '& input[type=number]': { width: '100px' } }); // Consider making this responsive if needed
-const CanvasWrapper = styled(Box)({ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', boxSizing: 'border-box', overflow: 'auto', touchAction: 'none' /* Prevent page scroll while panning canvas */ });
+const Input = styled(TextField)({ '& input[type=number]': { width: '100px' } }); 
+const CanvasWrapper = styled(Box)({ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', boxSizing: 'border-box', overflow: 'auto', touchAction: 'none' });
 const CanvasContainer = styled(Box)({ position: 'relative', border: '1px solid #ccc', backgroundColor: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' });
 const StyledCanvas = styled('canvas')({ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' });
 const DraggableItem = styled(motion.div)({ position: 'absolute', cursor: 'grab', '&:active': { cursor: 'grabbing' }, boxSizing: 'border-box' });
 
 const HandleStyles: React.CSSProperties = { position: 'absolute', width: `${HANDLE_SIZE}px`, height: `${HANDLE_SIZE}px`, borderRadius: '50%', border: '1.5px solid white', boxShadow: '0 0 5px rgba(0,0,0,0.3)', zIndex: 20000, boxSizing: 'border-box', cursor: 'default' };
-const ResizeHandleStyle: React.CSSProperties = { ...HandleStyles, backgroundColor: '#007bff', cursor: 'nwse-resize' };
-const RotateHandleStyle: React.CSSProperties = { ...HandleStyles, backgroundColor: '#007bff', cursor: 'alias', top: `-${HANDLE_OFFSET + 10}px`, left: `calc(50% - ${HANDLE_OFFSET}px)` };
+const ResizeHandleStyle: React.CSSProperties = { ...HandleStyles, backgroundColor: '#000000', cursor: 'nwse-resize' }; // Changed to black
+const RotateHandleStyle: React.CSSProperties = { ...HandleStyles, backgroundColor: '#000000', cursor: 'alias', top: `-${HANDLE_OFFSET + 10}px`, left: `calc(50% - ${HANDLE_OFFSET}px)` }; // Changed to black
+
+// Custom theme to change primary color to black
+const editorTheme = createTheme({
+    palette: {
+        primary: {
+            main: '#000000', // Black
+            contrastText: '#ffffff',
+        },
+        secondary: { // Also making secondary black for consistency, or choose another dark color
+            main: '#333333', // Dark grey, or '#000000' for pure black
+            contrastText: '#ffffff',
+        },
+    },
+    typography: {
+        fontFamily: 'Inter, sans-serif', // Ensuring Inter font is applied via theme
+         button: {
+            textTransform: 'none' // Optional: prevent uppercase buttons if desired
+        }
+    },
+    components: {
+        MuiButton: {
+            styleOverrides: {
+                // Example: ensure outlined primary buttons also use black
+                outlinedPrimary: {
+                    borderColor: '#000000',
+                    color: '#000000',
+                    '&:hover': {
+                        borderColor: alpha('#000000', 0.7),
+                        backgroundColor: alpha('#000000', 0.04),
+                    }
+                }
+            }
+        },
+        MuiSlider : {
+            styleOverrides: {
+                root: {
+                    // color: '#000000', // This will make the slider track black if it uses primary color
+                }
+            }
+        }
+    }
+});
+
 
 // Template Picker Component
 const TemplatePicker = ({ templates, onSelectTemplate }: { templates: Template[], onSelectTemplate: (templateId: string) => void }) => (
@@ -234,7 +277,7 @@ const UserImageManager = ({ userImages, onSelectUserImage, onImageUploaded }: { 
 
 // Text Editor Component (on canvas)
 const TextEditor = ({ item, onUpdateText, canvasWidth, canvasHeight, isSelected, onSelectItem, canvasRef, zoomLevel }: { item: TextItem, onUpdateText: (id: string, updates: Partial<TextItem>) => void, canvasWidth: number, canvasHeight: number, isSelected: boolean, onSelectItem: (id: string) => void, canvasRef: React.RefObject<HTMLDivElement | null>, zoomLevel: number }) => {
-    const inputRef = useRef<HTMLTextAreaElement>(null); // Changed to HTMLTextAreaElement for multiline
+    const inputRef = useRef<HTMLTextAreaElement>(null); 
     const itemRef = useRef<HTMLDivElement>(null);
     useEffect(() => { if (item.isEditing && inputRef.current) inputRef.current.focus(); }, [item.isEditing]);
     const handleBlur = () => onUpdateText(item.id, { isEditing: false });
@@ -258,7 +301,8 @@ const TextEditor = ({ item, onUpdateText, canvasWidth, canvasHeight, isSelected,
                 x: item.x, y: item.y, rotate: item.rotation || 0, fontFamily: item.fontFamily, fontSize: item.fontSize, color: item.color,
                 zIndex: isSelected ? item.zIndex + 1000 : item.zIndex,
                 width: 'auto', height: 'auto', padding: '2px',
-                border: isSelected ? `2px dashed #007bff` : `2px solid transparent`, transformOrigin: 'center center',
+                border: isSelected ? `2px dashed #000000` : `2px solid transparent`, // Changed to black
+                transformOrigin: 'center center',
                 opacity: item.opacity,
             }}
             dragListener={!item.isEditing}
@@ -311,7 +355,8 @@ const ImageEditor = ({ item, onUpdateImage, canvasWidth, canvasHeight, isSelecte
                     x: item.x, y: item.y, rotate: item.rotation || 0,
                     zIndex: isSelected ? item.zIndex + 1000 : item.zIndex,
                     width: item.width, height: item.height,
-                    border: isSelected ? `2px dashed #007bff` : `2px solid transparent`, transformOrigin: 'center center',
+                    border: isSelected ? `2px dashed #000000` : `2px solid transparent`, // Changed to black
+                    transformOrigin: 'center center',
                     opacity: item.opacity,
                 }}
             >
@@ -330,24 +375,12 @@ const ImageEditor = ({ item, onUpdateImage, canvasWidth, canvasHeight, isSelecte
                 )}
                 {isSelected && (
                     <>
-                        <motion.div style={{ ...ResizeHandleStyle, bottom: `-${HANDLE_OFFSET}px`, right: `-${HANDLE_OFFSET}px` }} drag="x" // Allow dragging in any direction for resize
+                        <motion.div style={{ ...ResizeHandleStyle, bottom: `-${HANDLE_OFFSET}px`, right: `-${HANDLE_OFFSET}px` }} drag="x" 
                             onDragStart={(e) => { e.stopPropagation(); onSelectItem(item.id); dragStartProperties.current = { width: item.width, height: item.height, rotation: item.rotation || 0, aspectRatio: item.width / item.height }; }}
                             onDrag={(_event, info: PanInfo) => {
-                                _event.stopPropagation(); const { width: initialWidth, height: initialHeight, aspectRatio } = dragStartProperties.current;
-                                
-                                // Calculate new width and height based on mouse/touch movement
-                                // This simple version resizes based on x and y independently.
-                                // For aspect ratio lock, you'd need more complex logic based on drag direction and aspect ratio.
+                                _event.stopPropagation(); const { width: initialWidth, height: initialHeight } = dragStartProperties.current;
                                 let newWidth = initialWidth + info.offset.x / zoomLevel;
                                 let newHeight = initialHeight + info.offset.y / zoomLevel;
-
-                                // Basic aspect ratio lock (can be improved)
-                                // If you want to lock aspect ratio while dragging from corner:
-                                // const delta = Math.max(info.offset.x, info.offset.y); // or a different logic
-                                // newWidth = initialWidth + delta / zoomLevel;
-                                // newHeight = newWidth / aspectRatio;
-
-
                                 onUpdateImage(item.id, { width: Math.max(MIN_ITEM_WIDTH, newWidth), height: Math.max(MIN_ITEM_HEIGHT, newHeight) });
                             }}
                             dragElastic={0} dragMomentum={false} className="handle resize-br" />
@@ -412,9 +445,10 @@ const ImagePropertyEditor = ({ item, onUpdate }: { item: ImageItem, onUpdate: (i
 
 
 // Main Wedding Invitation Editor Component
-const WeddingInvitationEditor = () => {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile screen
+const WeddingInvitationEditorContent = () => {
+    const theme = useTheme(); // Use theme from ThemeProvider
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTabletOrSmaller = useMediaQuery(theme.breakpoints.down('lg')); // Covers xs, sm, md
 
     const [pages, setPages] = useState<Page[]>([]);
     const [currentPageId, setCurrentPageId] = useState<string | null>(null);
@@ -423,7 +457,6 @@ const WeddingInvitationEditor = () => {
     const canvasContainerRef = useRef<HTMLDivElement | null>(null);
     const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
-    // State for mobile drawers
     const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
     const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
     const [headerMenuAnchorEl, setHeaderMenuAnchorEl] = React.useState<null | HTMLElement>(null);
@@ -449,15 +482,15 @@ const WeddingInvitationEditor = () => {
     const currentCanvasWidth = currentPage ? currentPage.canvasWidth : DEFAULT_CANVAS_WIDTH;
     const currentCanvasHeight = currentPage ? currentPage.canvasHeight : DEFAULT_CANVAS_HEIGHT;
 
-    const handleOpenTemplatePicker = () => { setOpenTemplatePicker(true); setLeftSidebarOpen(false); }
+    const handleOpenTemplatePicker = () => { setOpenTemplatePicker(true); if (isMobile || isTabletOrSmaller) setLeftSidebarOpen(false); }
     const handleCloseTemplatePicker = () => setOpenTemplatePicker(false);
-    const handleOpenIconPickerDrawer = () => { setOpenIconPickerDrawer(true); setLeftSidebarOpen(false); }
+    const handleOpenIconPickerDrawer = () => { setOpenIconPickerDrawer(true); if (isMobile || isTabletOrSmaller) setLeftSidebarOpen(false); }
     const handleCloseIconPickerDrawer = () => setOpenIconPickerDrawer(false);
-    const handleOpenUserImageManagerDrawer = () => { setOpenUserImageManagerDrawer(true); setLeftSidebarOpen(false); }
+    const handleOpenUserImageManagerDrawer = () => { setOpenUserImageManagerDrawer(true); if (isMobile || isTabletOrSmaller) setLeftSidebarOpen(false); }
     const handleCloseUserImageManagerDrawer = () => setOpenUserImageManagerDrawer(false);
-    const handleOpenPatternPickerDrawer = () => { setOpenPatternPickerDrawer(true); setLeftSidebarOpen(false); }
+    const handleOpenPatternPickerDrawer = () => { setOpenPatternPickerDrawer(true); if (isMobile || isTabletOrSmaller) setLeftSidebarOpen(false); }
     const handleClosePatternPickerDrawer = () => setOpenPatternPickerDrawer(false);
-    const handleOpenBorderPickerDrawer = () => { setOpenBorderPickerDrawer(true); setLeftSidebarOpen(false); }
+    const handleOpenBorderPickerDrawer = () => { setOpenBorderPickerDrawer(true); if (isMobile || isTabletOrSmaller) setLeftSidebarOpen(false); }
     const handleCloseBorderPickerDrawer = () => setOpenBorderPickerDrawer(false);
 
     const handleZoomIn = () => setZoomLevel(prevZoom => Math.min(MAX_ZOOM, prevZoom + ZOOM_STEP));
@@ -484,8 +517,7 @@ const WeddingInvitationEditor = () => {
     const handleCanvasWrapperMouseDown = (event: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         const targetElement = event.target as HTMLElement;
         
-        // For deselecting items and stopping editing
-        if (('button' in event && event.button === 0) || !('button' in event) /* for touch */) {
+        if (('button' in event && event.button === 0) || !('button' in event)) {
              if ((targetElement === canvasContainerRef.current || targetElement === event.currentTarget || targetElement === canvasWrapperRef.current) && !targetElement.closest('.handle')) {
                 handleSelectItem(null);
                 if (currentPageId) {
@@ -504,8 +536,6 @@ const WeddingInvitationEditor = () => {
             }
         }
 
-        // Panning logic (middle mouse or Ctrl+Click or two-finger touch for pan)
-        // Note: True two-finger pan requires more complex touch event handling. This is a simplified version.
         const isPanTrigger = ('button' in event && event.button === 1) || ('button' in event && event.button === 0 && event.ctrlKey) || ('touches' in event && event.touches.length === 2);
 
         if (isPanTrigger) { 
@@ -642,8 +672,8 @@ const WeddingInvitationEditor = () => {
             page.id === currentPageId ? { ...page, items: [...page.items, newTextItem] } : page
         ));
         setSelectedItemId(newTextItem.id);
-        if (isMobile) setLeftSidebarOpen(false); // Close sidebar on mobile after action
-    }, [currentPage, currentPageId, getNextZIndex, isMobile]);
+        if (isMobile || isTabletOrSmaller) setLeftSidebarOpen(false); 
+    }, [currentPage, currentPageId, getNextZIndex, isMobile, isTabletOrSmaller]);
 
     const addImageToCanvas = useCallback((imageUrl: string) => {
         if (!currentPage) return;
@@ -958,7 +988,7 @@ const WeddingInvitationEditor = () => {
                     {pages.map((page) => ( 
                         <Card 
                             key={page.id} 
-                            onClick={() => {setCurrentPageId(page.id); setSelectedItemId(null); setZoomLevel(1); setViewOffset({x:0,y:0}); if(isMobile) setRightSidebarOpen(false);}}
+                            onClick={() => {setCurrentPageId(page.id); setSelectedItemId(null); setZoomLevel(1); setViewOffset({x:0,y:0}); if(isMobile || isTabletOrSmaller) setRightSidebarOpen(false);}}
                             sx={{ 
                                 cursor: 'pointer', 
                                 border: `2px solid ${page.id === currentPageId ? theme.palette.primary.main : theme.palette.divider}`,
@@ -1005,25 +1035,35 @@ const WeddingInvitationEditor = () => {
         </Box>
     );
 
+    // Show message on unsupported devices
+    if (isTabletOrSmaller) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', p: 2, textAlign: 'center', bgcolor: 'background.default' }}>
+                <Typography variant="h5" color="text.primary">
+                    Hiện tại chức năng này chưa hỗ trợ trên thiết bị điện thoại và máy tính bảng.
+                </Typography>
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column', fontFamily: 'Inter, sans-serif', bgcolor: 'white' }}>
             {/* Top Header */}
             <Box sx={{ display: 'flex', alignItems: 'center', p: {xs: '4px 8px', sm: '4px 16px'}, backgroundColor: 'white', color: 'black', flexShrink: 0, boxShadow: 2, height: 56 }}>
-                {isMobile && (
+                {isMobile && ( // This isMobile is now only for the menu icon if isTabletOrSmaller hasn't returned early
                     <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setLeftSidebarOpen(true)}>
                         <MenuIcon />
                     </IconButton>
                 )}
                 <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', letterSpacing: '0.5px', fontSize: {xs: '1rem', sm: '1.25rem'} }}>Image Canvas</Typography>
                 
-                {!isMobile && (
+                {!isMobile && ( // This !isMobile is now only for desktop if isTabletOrSmaller hasn't returned early
                      <Button startIcon={<PeopleAltIcon />} variant="outlined" size="small" sx={{ ml: 2, color: 'black', borderColor: alpha(theme.palette.common.black, 0.23), '&:hover': {borderColor: theme.palette.common.black} }}>QL Khách mời</Button>
                 )}
 
                 <Typography variant="body2" sx={{ ml: 'auto', mr: {xs:1, sm:2}, fontStyle: 'italic', display: {xs: 'none', md: 'block'} }}>{currentPage?.name || "Thiệp không tên"}</Typography>
                 
-                {isMobile ? (
+                {isMobile ? (  // This isMobile is now only for the menu icon if isTabletOrSmaller hasn't returned early
                     <>
                         <IconButton color="inherit" onClick={handleHeaderMenuOpen} sx={{ml: 'auto'}}>
                             <MoreVertIcon />
@@ -1054,7 +1094,7 @@ const WeddingInvitationEditor = () => {
                     <>
                         <Tooltip title="Lưu thiệp (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><SaveIcon /></IconButton></Tooltip>
                         <Tooltip title="In thiệp mời (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><PrintIcon /></IconButton></Tooltip>
-                        <Button variant="contained" color="secondary" onClick={handleSave} size="small" startIcon={<DownloadIcon />} sx={{backgroundColor: 'black', '&:hover': {backgroundColor: 'gray'}}}>Tải ZIP</Button>
+                        <Button variant="contained" color="primary" onClick={handleSave} size="small" startIcon={<DownloadIcon />}>Tải ZIP</Button>
                     </>
                 )}
             </Box>
@@ -1066,7 +1106,7 @@ const WeddingInvitationEditor = () => {
                         {leftSidebarContent}
                     </Box>
                 )}
-                {/* Left Sidebar - Mobile Drawer */}
+                {/* Left Sidebar - Mobile Drawer (will not be shown if isTabletOrSmaller is true due to early return) */}
                 <Drawer anchor="left" open={isMobile && leftSidebarOpen} onClose={() => setLeftSidebarOpen(false)} PaperProps={{ sx: { width: MOBILE_DRAWER_WIDTH } }}>
                     {leftSidebarContent}
                 </Drawer>
@@ -1130,12 +1170,12 @@ const WeddingInvitationEditor = () => {
                 </Box>
 
                 {/* Right Sidebar - Desktop */}
-                {!isMobile && (
+                {!isMobile && ( // This !isMobile is now only for desktop if isTabletOrSmaller hasn't returned early
                     <Box sx={{ width: RIGHT_SIDEBAR_WIDTH_DESKTOP, borderLeft: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink:0 }}>
                        {rightSidebarContent}
                     </Box>
                 )}
-                 {/* Right Sidebar - Mobile Drawer */}
+                 {/* Right Sidebar - Mobile Drawer (will not be shown if isTabletOrSmaller is true due to early return) */}
                 <Drawer anchor="right" open={isMobile && rightSidebarOpen} onClose={() => setRightSidebarOpen(false)} PaperProps={{ sx: { width: MOBILE_DRAWER_WIDTH } }}>
                     {rightSidebarContent}
                 </Drawer>
