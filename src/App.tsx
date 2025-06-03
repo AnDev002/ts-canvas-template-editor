@@ -21,7 +21,7 @@ function App() {
     <ThemeProvider theme={theme}>
           <Router>
             <Routes>
-              <Route path='/' element={<Home />} />
+              <Route path='/' element={<Design />} />
               <Route path='/design' element={<Design />} />
               <Route path="*" element={<p>Path not resolved</p>} />
             </Routes>
