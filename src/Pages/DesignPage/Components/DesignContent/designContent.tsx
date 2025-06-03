@@ -98,7 +98,7 @@ interface Page {
 const FONT_FAMILIES = ['Arial', 'Times New Roman', 'Verdana', 'Courier New', 'Garamond', 'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald'];
 
 const TEMPLATES: Template[] = [
-    { id: 'template1_local', name: 'Mẫu Cục Bộ 1 (800x600)', imageUrl: '/tp1.jpg', width: 800, height: 600 },
+    { id: 'template1_local', name: 'Mẫu Cục Bộ 1 (800x600)', imageUrl: '/solarsystem.jpg', width: 800, height: 600 },
     { id: 'template2_local', name: 'Mẫu Cục Bộ 2 (600x800)', imageUrl: '/tp2.jpg', width: 600, height: 800 },
     { id: 'template3_local', name: 'Mẫu Cục Bộ 3 (700x500)', imageUrl: '/tp3.jpg', width: 700, height: 500 },
 ];
