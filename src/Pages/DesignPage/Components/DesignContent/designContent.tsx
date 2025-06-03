@@ -4,7 +4,7 @@ import type { PanInfo } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import { Box, Typography, Card, CardContent, CardMedia, Grid, IconButton, Drawer, Select, MenuItem, InputLabel, FormControl, Slider, Checkbox, FormControlLabel, Tooltip, Divider } from '@mui/material';
+import { Box, Typography, Card, CardContent, CardMedia, Grid, IconButton, Drawer, Select, MenuItem, InputLabel, FormControl, Slider, Checkbox, FormControlLabel, Tooltip, Divider, Menu, Hidden, useMediaQuery } from '@mui/material';
 import { styled, useTheme, alpha } from '@mui/material/styles';
 import {
     TextFields as TextFieldsIcon,
@@ -30,8 +30,11 @@ import {
     PeopleAlt as PeopleAltIcon,
     FileCopy as FileCopyIcon,
     AddCircleOutline as AddCircleOutlineIcon,
+    Menu as MenuIcon, // Added for mobile navigation
+    MoreVert as MoreVertIcon, // Added for mobile header actions
+    Settings as SettingsIcon, // For right sidebar toggle
 } from '@mui/icons-material';
-import JSZip from 'jszip'; // Import JSZip
+import JSZip from 'jszip';
 
 // Interfaces for design items
 interface TextItem {
@@ -122,7 +125,7 @@ const TAG_IMAGES = [
 
 const MIN_ITEM_WIDTH = 20;
 const MIN_ITEM_HEIGHT = 20;
-const HANDLE_SIZE = 10;
+const HANDLE_SIZE = 12; // Slightly larger for touch
 const HANDLE_OFFSET = HANDLE_SIZE / 2;
 const BASE_Z_INDEX = 5;
 
@@ -130,14 +133,16 @@ const ZOOM_STEP = 0.1;
 const MIN_ZOOM = 0.2;
 const MAX_ZOOM = 3.0;
 
-const LEFT_SIDEBAR_WIDTH = 220;
-const RIGHT_SIDEBAR_WIDTH = 280;
+const LEFT_SIDEBAR_WIDTH_DESKTOP = 220;
+const RIGHT_SIDEBAR_WIDTH_DESKTOP = 280;
+const MOBILE_DRAWER_WIDTH = '85vw'; // For pickers and sidebars on mobile
+
 const DEFAULT_CANVAS_WIDTH = 800;
 const DEFAULT_CANVAS_HEIGHT = 600;
 
 // Styled components
-const Input = styled(TextField)({ '& input[type=number]': { width: '100px' } });
-const CanvasWrapper = styled(Box)({ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', boxSizing: 'border-box', overflow: 'auto' });
+const Input = styled(TextField)({ '& input[type=number]': { width: '100px' } }); // Consider making this responsive if needed
+const CanvasWrapper = styled(Box)({ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '100%', boxSizing: 'border-box', overflow: 'auto', touchAction: 'none' /* Prevent page scroll while panning canvas */ });
 const CanvasContainer = styled(Box)({ position: 'relative', border: '1px solid #ccc', backgroundColor: '#ffffff', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' });
 const StyledCanvas = styled('canvas')({ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' });
 const DraggableItem = styled(motion.div)({ position: 'absolute', cursor: 'grab', '&:active': { cursor: 'grabbing' }, boxSizing: 'border-box' });
@@ -229,11 +234,11 @@ const UserImageManager = ({ userImages, onSelectUserImage, onImageUploaded }: { 
 
 // Text Editor Component (on canvas)
 const TextEditor = ({ item, onUpdateText, canvasWidth, canvasHeight, isSelected, onSelectItem, canvasRef, zoomLevel }: { item: TextItem, onUpdateText: (id: string, updates: Partial<TextItem>) => void, canvasWidth: number, canvasHeight: number, isSelected: boolean, onSelectItem: (id: string) => void, canvasRef: React.RefObject<HTMLDivElement | null>, zoomLevel: number }) => {
-    const inputRef = useRef<HTMLInputElement>(null);
+    const inputRef = useRef<HTMLTextAreaElement>(null); // Changed to HTMLTextAreaElement for multiline
     const itemRef = useRef<HTMLDivElement>(null);
     useEffect(() => { if (item.isEditing && inputRef.current) inputRef.current.focus(); }, [item.isEditing]);
     const handleBlur = () => onUpdateText(item.id, { isEditing: false });
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleBlur(); }};
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleBlur(); }};
     const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
         let newX = item.x + info.offset.x / zoomLevel;
         let newY = item.y + info.offset.y / zoomLevel;
@@ -259,12 +264,17 @@ const TextEditor = ({ item, onUpdateText, canvasWidth, canvasHeight, isSelected,
             dragListener={!item.isEditing}
         >
             {item.isEditing ? (
-                <Input inputRef={inputRef} value={item.content} onChange={(e) => onUpdateText(item.id, { content: e.target.value })}
+                <TextField inputRef={inputRef} value={item.content} onChange={(e) => onUpdateText(item.id, { content: e.target.value })}
                     onBlur={handleBlur} onKeyDown={handleKeyDown} onClick={(e) => e.stopPropagation()}
                     sx={{
-                        fontSize: `${item.fontSize}px`, fontFamily: item.fontFamily, color: item.color, border: '1px solid black',
-                        background: 'white', padding: '0px 2px', width: 'auto', minWidth: '50px', boxSizing: 'border-box',
-                        lineHeight: 1.2, 
+                        '& .MuiInputBase-input': {
+                           fontSize: `${item.fontSize}px`, fontFamily: item.fontFamily, color: item.color, 
+                           padding: '0px 2px', lineHeight: 1.2, width: 'auto', minWidth: '50px',
+                        },
+                        '& .MuiOutlinedInput-root': {
+                            padding: '2px', background: 'white', border: '1px solid black',
+                        },
+                        minWidth: '50px', boxSizing: 'border-box',
                     }}
                     size="small" variant="outlined" autoFocus multiline
                 />
@@ -320,12 +330,24 @@ const ImageEditor = ({ item, onUpdateImage, canvasWidth, canvasHeight, isSelecte
                 )}
                 {isSelected && (
                     <>
-                        <motion.div style={{ ...ResizeHandleStyle, bottom: `-${HANDLE_OFFSET}px`, right: `-${HANDLE_OFFSET}px` }} drag
+                        <motion.div style={{ ...ResizeHandleStyle, bottom: `-${HANDLE_OFFSET}px`, right: `-${HANDLE_OFFSET}px` }} drag="x" // Allow dragging in any direction for resize
                             onDragStart={(e) => { e.stopPropagation(); onSelectItem(item.id); dragStartProperties.current = { width: item.width, height: item.height, rotation: item.rotation || 0, aspectRatio: item.width / item.height }; }}
                             onDrag={(_event, info: PanInfo) => {
-                                _event.stopPropagation(); const { width: initialWidth, height: initialHeight } = dragStartProperties.current;
+                                _event.stopPropagation(); const { width: initialWidth, height: initialHeight, aspectRatio } = dragStartProperties.current;
+                                
+                                // Calculate new width and height based on mouse/touch movement
+                                // This simple version resizes based on x and y independently.
+                                // For aspect ratio lock, you'd need more complex logic based on drag direction and aspect ratio.
                                 let newWidth = initialWidth + info.offset.x / zoomLevel;
                                 let newHeight = initialHeight + info.offset.y / zoomLevel;
+
+                                // Basic aspect ratio lock (can be improved)
+                                // If you want to lock aspect ratio while dragging from corner:
+                                // const delta = Math.max(info.offset.x, info.offset.y); // or a different logic
+                                // newWidth = initialWidth + delta / zoomLevel;
+                                // newHeight = newWidth / aspectRatio;
+
+
                                 onUpdateImage(item.id, { width: Math.max(MIN_ITEM_WIDTH, newWidth), height: Math.max(MIN_ITEM_HEIGHT, newHeight) });
                             }}
                             dragElastic={0} dragMomentum={false} className="handle resize-br" />
@@ -392,12 +414,20 @@ const ImagePropertyEditor = ({ item, onUpdate }: { item: ImageItem, onUpdate: (i
 // Main Wedding Invitation Editor Component
 const WeddingInvitationEditor = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm')); // Detect mobile screen
+
     const [pages, setPages] = useState<Page[]>([]);
     const [currentPageId, setCurrentPageId] = useState<string | null>(null);
     
     const exportCanvasRef = useRef<HTMLCanvasElement>(null);
     const canvasContainerRef = useRef<HTMLDivElement | null>(null);
     const canvasWrapperRef = useRef<HTMLDivElement>(null);
+
+    // State for mobile drawers
+    const [leftSidebarOpen, setLeftSidebarOpen] = useState(false);
+    const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
+    const [headerMenuAnchorEl, setHeaderMenuAnchorEl] = React.useState<null | HTMLElement>(null);
+
 
     const [openTemplatePicker, setOpenTemplatePicker] = useState(false);
     const [openIconPickerDrawer, setOpenIconPickerDrawer] = useState(false);
@@ -419,15 +449,15 @@ const WeddingInvitationEditor = () => {
     const currentCanvasWidth = currentPage ? currentPage.canvasWidth : DEFAULT_CANVAS_WIDTH;
     const currentCanvasHeight = currentPage ? currentPage.canvasHeight : DEFAULT_CANVAS_HEIGHT;
 
-    const handleOpenTemplatePicker = () => setOpenTemplatePicker(true);
+    const handleOpenTemplatePicker = () => { setOpenTemplatePicker(true); setLeftSidebarOpen(false); }
     const handleCloseTemplatePicker = () => setOpenTemplatePicker(false);
-    const handleOpenIconPickerDrawer = () => setOpenIconPickerDrawer(true);
+    const handleOpenIconPickerDrawer = () => { setOpenIconPickerDrawer(true); setLeftSidebarOpen(false); }
     const handleCloseIconPickerDrawer = () => setOpenIconPickerDrawer(false);
-    const handleOpenUserImageManagerDrawer = () => setOpenUserImageManagerDrawer(true);
+    const handleOpenUserImageManagerDrawer = () => { setOpenUserImageManagerDrawer(true); setLeftSidebarOpen(false); }
     const handleCloseUserImageManagerDrawer = () => setOpenUserImageManagerDrawer(false);
-    const handleOpenPatternPickerDrawer = () => setOpenPatternPickerDrawer(true);
+    const handleOpenPatternPickerDrawer = () => { setOpenPatternPickerDrawer(true); setLeftSidebarOpen(false); }
     const handleClosePatternPickerDrawer = () => setOpenPatternPickerDrawer(false);
-    const handleOpenBorderPickerDrawer = () => setOpenBorderPickerDrawer(true);
+    const handleOpenBorderPickerDrawer = () => { setOpenBorderPickerDrawer(true); setLeftSidebarOpen(false); }
     const handleCloseBorderPickerDrawer = () => setOpenBorderPickerDrawer(false);
 
     const handleZoomIn = () => setZoomLevel(prevZoom => Math.min(MAX_ZOOM, prevZoom + ZOOM_STEP));
@@ -451,46 +481,68 @@ const WeddingInvitationEditor = () => {
         }
     }, [currentPageId]);
 
-    const handleCanvasWrapperMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
+    const handleCanvasWrapperMouseDown = (event: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
         const targetElement = event.target as HTMLElement;
-        if (event.button === 0 && (targetElement === canvasContainerRef.current || targetElement === event.currentTarget || targetElement === canvasWrapperRef.current) && !targetElement.closest('.handle')) {
-            handleSelectItem(null);
-            if (currentPageId) {
-                 setPages(prevPages => prevPages.map(page => {
-                    if (page.id === currentPageId) {
-                        return {
-                            ...page,
-                            items: page.items.map(item =>
-                                item.type === 'text' && item.isEditing ? { ...item, isEditing: false } : item
-                            )
-                        };
-                    }
-                    return page;
-                }));
+        
+        // For deselecting items and stopping editing
+        if (('button' in event && event.button === 0) || !('button' in event) /* for touch */) {
+             if ((targetElement === canvasContainerRef.current || targetElement === event.currentTarget || targetElement === canvasWrapperRef.current) && !targetElement.closest('.handle')) {
+                handleSelectItem(null);
+                if (currentPageId) {
+                    setPages(prevPages => prevPages.map(page => {
+                        if (page.id === currentPageId) {
+                            return {
+                                ...page,
+                                items: page.items.map(item =>
+                                    item.type === 'text' && item.isEditing ? { ...item, isEditing: false } : item
+                                )
+                            };
+                        }
+                        return page;
+                    }));
+                }
             }
         }
-        if (event.button === 1 || (event.button === 0 && event.ctrlKey)) { 
-            event.preventDefault(); isPanning.current = true;
-            panStart.current = { x: event.clientX, y: event.clientY };
+
+        // Panning logic (middle mouse or Ctrl+Click or two-finger touch for pan)
+        // Note: True two-finger pan requires more complex touch event handling. This is a simplified version.
+        const isPanTrigger = ('button' in event && event.button === 1) || ('button' in event && event.button === 0 && event.ctrlKey) || ('touches' in event && event.touches.length === 2);
+
+        if (isPanTrigger) { 
+            event.preventDefault(); 
+            isPanning.current = true;
+            const currentX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+            const currentY = 'touches' in event ? event.touches[0].clientY : event.clientY;
+            panStart.current = { x: currentX, y: currentY };
             if (canvasWrapperRef.current) canvasWrapperRef.current.style.cursor = 'grabbing';
-            const handleGlobalMouseMove = (e: MouseEvent) => {
+
+            const handleGlobalMouseMove = (e: MouseEvent | TouchEvent) => {
                 if (!isPanning.current) return;
-                const dx = e.clientX - panStart.current.x; const dy = e.clientY - panStart.current.y;
+                const moveX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+                const moveY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+                const dx = moveX - panStart.current.x; 
+                const dy = moveY - panStart.current.y;
                 setViewOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-                panStart.current = { x: e.clientX, y: e.clientY };
+                panStart.current = { x: moveX, y: moveY };
             };
+
             const handleGlobalMouseUp = () => {
                 if (isPanning.current) {
                     isPanning.current = false;
                     if (canvasWrapperRef.current) canvasWrapperRef.current.style.cursor = 'grab';
-                    window.removeEventListener('mousemove', handleGlobalMouseMove);
-                    window.removeEventListener('mouseup', handleGlobalMouseUp);
+                    window.removeEventListener('mousemove', handleGlobalMouseMove as EventListener);
+                    window.removeEventListener('mouseup', handleGlobalMouseUp as EventListener);
+                    window.removeEventListener('touchmove', handleGlobalMouseMove as EventListener);
+                    window.removeEventListener('touchend', handleGlobalMouseUp as EventListener);
                 }
             };
-            window.addEventListener('mousemove', handleGlobalMouseMove);
-            window.addEventListener('mouseup', handleGlobalMouseUp);
+            window.addEventListener('mousemove', handleGlobalMouseMove as EventListener);
+            window.addEventListener('mouseup', handleGlobalMouseUp as EventListener);
+            window.addEventListener('touchmove', handleGlobalMouseMove as EventListener);
+            window.addEventListener('touchend', handleGlobalMouseUp as EventListener);
         }
     };
+
 
     const handleCanvasWrapperContextMenu = (event: React.MouseEvent<HTMLDivElement>) => event.preventDefault();
 
@@ -590,7 +642,8 @@ const WeddingInvitationEditor = () => {
             page.id === currentPageId ? { ...page, items: [...page.items, newTextItem] } : page
         ));
         setSelectedItemId(newTextItem.id);
-    }, [currentPage, currentPageId, getNextZIndex]);
+        if (isMobile) setLeftSidebarOpen(false); // Close sidebar on mobile after action
+    }, [currentPage, currentPageId, getNextZIndex, isMobile]);
 
     const addImageToCanvas = useCallback((imageUrl: string) => {
         if (!currentPage) return;
@@ -673,7 +726,7 @@ const WeddingInvitationEditor = () => {
 
     const handleSendToBack = useCallback((itemId: string) => {
         if (!currentPageId) return;
-         setPages(prevPages => prevPages.map(p => {
+        setPages(prevPages => prevPages.map(p => {
             if (p.id === currentPageId) {
                 const itemToMove = p.items.find(item => item.id === itemId);
                 if (!itemToMove) return p;
@@ -731,20 +784,17 @@ const WeddingInvitationEditor = () => {
         if (wrapper) wrapper.style.cursor = isPanning.current ? 'grabbing' : 'grab';
     }, [isPanning.current]);
 
-    // Updated handleSave function to export a ZIP file
     const handleSave = async () => {
         const exportCvs = exportCanvasRef.current;
         if (!exportCvs || pages.length === 0) {
             console.error('Canvas không khả dụng hoặc không có trang nào để xuất.');
-            // Optionally, show a user-friendly message here
             return;
         }
 
         const previouslySelectedItemId = selectedItemId;
         const previouslySelectedPageId = currentPageId;
-        setSelectedItemId(null); // Deselect item for clean export
+        setSelectedItemId(null); 
 
-        // Give UI time to update (deselect item visually)
         await new Promise(resolve => setTimeout(resolve, 50));
 
         const exportCtx = exportCvs.getContext('2d');
@@ -760,18 +810,15 @@ const WeddingInvitationEditor = () => {
         for (let i = 0; i < pages.length; i++) {
             const page = pages[i];
             
-            // Set canvas dimensions for the current page
             exportCvs.width = page.canvasWidth;
             exportCvs.height = page.canvasHeight;
-            exportCtx.fillStyle = '#FFFFFF'; // Clear with white background
+            exportCtx.fillStyle = '#FFFFFF'; 
             exportCtx.fillRect(0, 0, exportCvs.width, exportCvs.height);
 
-            // Draw page background
             if (page.backgroundImage) {
                 try {
                     const bgImage = new Image();
                     bgImage.crossOrigin = "anonymous";
-                    // Use a promise to wait for the image to load
                     await new Promise<void>((resolve, reject) => {
                         bgImage.onload = () => {
                             exportCtx.drawImage(bgImage, 0, 0, page.canvasWidth, page.canvasHeight);
@@ -779,23 +826,22 @@ const WeddingInvitationEditor = () => {
                         };
                         bgImage.onerror = (e) => {
                             console.error(`Lỗi tải ảnh nền cho trang ${i + 1} (${page.backgroundImage}):`, e);
-                            exportCtx.fillStyle = '#e0e0e0'; // Fallback background
+                            exportCtx.fillStyle = '#e0e0e0'; 
                             exportCtx.fillRect(0, 0, page.canvasWidth, page.canvasHeight);
-                            resolve(); // Resolve even on error to continue export
+                            resolve(); 
                         };
                         bgImage.src = page.backgroundImage;
                     });
                 } catch (e) {
                     console.error(`Exception khi tải ảnh nền trang ${i + 1}:`, e);
-                    exportCtx.fillStyle = '#cccccc'; // Different fallback for exception
+                    exportCtx.fillStyle = '#cccccc'; 
                     exportCtx.fillRect(0, 0, page.canvasWidth, page.canvasHeight);
                 }
             } else {
-                exportCtx.fillStyle = '#f8f8f8'; // Default page background if no image
+                exportCtx.fillStyle = '#f8f8f8'; 
                 exportCtx.fillRect(0, 0, page.canvasWidth, page.canvasHeight);
             }
 
-            // Draw items for the current page
             const sortedItems = [...page.items].sort((a, b) => a.zIndex - b.zIndex);
             for (const item of sortedItems) {
                 exportCtx.save();
@@ -808,7 +854,6 @@ const WeddingInvitationEditor = () => {
                     exportCtx.font = `${item.fontSize}px "${item.fontFamily}"`;
                     const textMetrics = exportCtx.measureText(item.content);
                     const textWidth = textMetrics.width;
-                    // Approximate height for multiline text based on font size and number of lines
                     const lines = item.content.split('\n');
                     const textHeightApprox = item.fontSize * 1.2 * lines.length; 
 
@@ -842,7 +887,7 @@ const WeddingInvitationEditor = () => {
                             };
                             itemImg.onerror = (e) => { 
                                 console.error(`Lỗi tải ảnh item (${item.url}) cho trang ${i + 1}:`, e); 
-                                resolve(); // Continue zipping other items/pages
+                                resolve(); 
                             };
                             itemImg.src = item.url;
                         });
@@ -853,13 +898,11 @@ const WeddingInvitationEditor = () => {
                 exportCtx.restore();
             }
             
-            // Add the current page canvas to the zip
             const pageDataUrl = exportCvs.toDataURL('image/png');
-            const base64Data = pageDataUrl.split(',')[1]; // Remove "data:image/png;base64," prefix
+            const base64Data = pageDataUrl.split(',')[1]; 
             zip.file(`trang_${i + 1}_${page.name.replace(/[^a-z0-9]/gi, '_')}.png`, base64Data, { base64: true });
         }
 
-        // Generate and download the zip file
         try {
             const zipBlob = await zip.generateAsync({ type: "blob" });
             const zipFileName = "thiep_moi_cuoi_cac_trang.zip";
@@ -869,12 +912,11 @@ const WeddingInvitationEditor = () => {
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(link.href); // Clean up
+            URL.revokeObjectURL(link.href); 
         } catch (e) {
             console.error("Lỗi tạo hoặc tải file ZIP:", e);
         }
         
-        // Restore selection
         if (previouslySelectedPageId) setCurrentPageId(previouslySelectedPageId);
         if (previouslySelectedItemId) setSelectedItemId(previouslySelectedItemId);
     };
@@ -882,49 +924,169 @@ const WeddingInvitationEditor = () => {
 
     const activeItem = currentPage ? currentItems.find(i => i.id === selectedItemId) : null;
 
+    const handleHeaderMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+        setHeaderMenuAnchorEl(event.currentTarget);
+    };
+    const handleHeaderMenuClose = () => {
+        setHeaderMenuAnchorEl(null);
+    };
+
+
+    // Left Sidebar Content
+    const leftSidebarContent = (
+         <Box sx={{ p: 1.5, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
+            <Button fullWidth variant="text" startIcon={<ArrowBackIcon />} sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}>Trở về</Button>
+            <Button fullWidth variant="contained" startIcon={<DesignServicesIcon />} sx={{ justifyContent: 'flex-start' }} color="primary">Thiết kế</Button>
+            <Divider sx={{ my: 1 }} />
+            <Typography variant="overline" color="text.secondary" sx={{px:1}}>Công cụ</Typography>
+            <Button fullWidth variant="text" startIcon={<StyleIcon />} onClick={handleOpenTemplatePicker} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Mẫu</Button>
+            <Button fullWidth variant="text" startIcon={<TextFieldsIcon />} onClick={handleAddText} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Văn bản</Button>
+            <Button fullWidth variant="text" startIcon={<CloudUploadIcon />} onClick={handleOpenUserImageManagerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Tải ảnh lên</Button>
+            <Button fullWidth variant="text" startIcon={<ImageIcon />} onClick={handleOpenIconPickerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Icon</Button>
+            <Button fullWidth variant="text" startIcon={<CategoryIcon />} onClick={handleOpenPatternPickerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Thành phần</Button>
+            <Button fullWidth variant="text" startIcon={<LabelIcon />} onClick={handleOpenBorderPickerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Tag/Khung</Button>
+            <FormControlLabel control={<Checkbox checked={showGuidelines} onChange={(e) => setShowGuidelines(e.target.checked)} size="small" />} label="Dòng kẻ" sx={{ mt: 'auto', color:'text.secondary' }} />
+        </Box>
+    );
+
+    // Right Sidebar Content
+    const rightSidebarContent = (
+        <Box sx={{ p: 2, overflowY: 'auto', display:'flex', flexDirection:'column', gap:2, height: '100%' }}>
+            <Box>
+                <Typography variant="h6" gutterBottom>Trang thiệp</Typography>
+                <Box sx={{display:'flex', flexDirection:'column', gap:1, maxHeight: {xs: '25vh', sm: '30vh'}, overflowY:'auto', mb:1, pr:0.5 }}>
+                    {pages.map((page) => ( 
+                        <Card 
+                            key={page.id} 
+                            onClick={() => {setCurrentPageId(page.id); setSelectedItemId(null); setZoomLevel(1); setViewOffset({x:0,y:0}); if(isMobile) setRightSidebarOpen(false);}}
+                            sx={{ 
+                                cursor: 'pointer', 
+                                border: `2px solid ${page.id === currentPageId ? theme.palette.primary.main : theme.palette.divider}`,
+                                '&:hover': { borderColor: theme.palette.primary.light },
+                                minHeight: 80,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexDirection: 'column',
+                                p:1,
+                                position: 'relative' 
+                            }}
+                        >
+                            {page.backgroundImage ? 
+                                <CardMedia component="img" height="50" image={page.backgroundImage} alt={page.name} sx={{ objectFit: 'contain', maxWidth:'100%' }} 
+                                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+                                        const target = e.target as HTMLImageElement; target.onerror = null;
+                                        target.style.display = 'none'; 
+                                    }}
+                                /> : 
+                                <FileCopyIcon sx={{fontSize: 30, color: 'text.disabled'}}/>
+                            }
+                            <Typography variant="caption" sx={{mt:0.5}}>{page.name}</Typography>
+                            <Typography variant="caption" color="textSecondary" sx={{fontSize: '0.65rem'}}>
+                                ({page.canvasWidth}x{page.canvasHeight})
+                            </Typography>
+                        </Card>
+                    ))}
+                </Box>
+                <Button startIcon={<AddCircleOutlineIcon />} fullWidth sx={{mt:1}} variant="outlined" size="small" onClick={handleAddPage}>Thêm trang</Button>
+            </Box>
+            <Divider />
+            <Box sx={{flexGrow:1, overflowY: 'auto', pb:2}}>
+                <Typography variant="h6" gutterBottom>Thuộc tính</Typography>
+                {activeItem?.type === 'text' && currentPageId && (
+                    <TextPropertyEditor item={activeItem as TextItem} onUpdate={handleUpdateItem} />
+                )}
+                {activeItem?.type === 'image' && currentPageId && (
+                    <ImagePropertyEditor item={activeItem as ImageItem} onUpdate={handleUpdateItem} />
+                )}
+                {!selectedItemId && currentPageId && <Typography variant="body2" color="textSecondary" sx={{textAlign:'center', mt:2}}>Chọn đối tượng trên trang hiện tại để sửa.</Typography>}
+                {!currentPageId && <Typography variant="body2" color="textSecondary" sx={{textAlign:'center', mt:2}}>Vui lòng chọn hoặc thêm một trang để bắt đầu.</Typography>}
+            </Box>
+        </Box>
+    );
+
+
     return (
         <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column', fontFamily: 'Inter, sans-serif', bgcolor: 'white' }}>
             {/* Top Header */}
-            <Box sx={{ display: 'flex', alignItems: 'center', p: '4px 16px', backgroundColor: 'white', color: 'black', flexShrink: 0, boxShadow: 2, height: 56 }}>
-                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>Image Canvas</Typography>
-                <Button startIcon={<PeopleAltIcon />} variant="outlined" size="small" sx={{ ml: 2, color: 'black', borderColor: alpha(theme.palette.common.white, 0.5), '&:hover': {borderColor: theme.palette.common.white} }}>QL Khách mời</Button>
-                <Typography variant="body2" sx={{ ml: 'auto', mr: 2, fontStyle: 'italic' }}>{currentPage?.name || "Thiệp không tên"}</Typography>
-                <Tooltip title="Lưu thiệp (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><SaveIcon /></IconButton></Tooltip>
-                <Tooltip title="In thiệp mời (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><PrintIcon /></IconButton></Tooltip>
-                <Button variant="contained" color="secondary" onClick={handleSave} size="small" startIcon={<DownloadIcon />} sx={{backgroundColor: 'black', '&:hover': {backgroundColor: 'gray'}}}>Tải ZIP</Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', p: {xs: '4px 8px', sm: '4px 16px'}, backgroundColor: 'white', color: 'black', flexShrink: 0, boxShadow: 2, height: 56 }}>
+                {isMobile && (
+                    <IconButton edge="start" color="inherit" aria-label="menu" sx={{ mr: 1 }} onClick={() => setLeftSidebarOpen(true)}>
+                        <MenuIcon />
+                    </IconButton>
+                )}
+                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', letterSpacing: '0.5px', fontSize: {xs: '1rem', sm: '1.25rem'} }}>Image Canvas</Typography>
+                
+                <Hidden smDown>
+                     <Button startIcon={<PeopleAltIcon />} variant="outlined" size="small" sx={{ ml: 2, color: 'black', borderColor: alpha(theme.palette.common.black, 0.23), '&:hover': {borderColor: theme.palette.common.black} }}>QL Khách mời</Button>
+                </Hidden>
+
+                <Typography variant="body2" sx={{ ml: 'auto', mr: {xs:1, sm:2}, fontStyle: 'italic', display: {xs: 'none', md: 'block'} }}>{currentPage?.name || "Thiệp không tên"}</Typography>
+                
+                {isMobile ? (
+                    <>
+                        <IconButton color="inherit" onClick={handleHeaderMenuOpen} sx={{ml: 'auto'}}>
+                            <MoreVertIcon />
+                        </IconButton>
+                        <Menu
+                            anchorEl={headerMenuAnchorEl}
+                            open={Boolean(headerMenuAnchorEl)}
+                            onClose={handleHeaderMenuClose}
+                        >
+                            <MenuItem onClick={() => { /* QL Khách mời logic */ handleHeaderMenuClose(); }}>
+                                <PeopleAltIcon sx={{mr:1}} fontSize="small"/> QL Khách mời
+                            </MenuItem>
+                            <MenuItem onClick={() => { /* Save logic */ handleHeaderMenuClose(); }}>
+                                <SaveIcon sx={{mr:1}} fontSize="small"/> Lưu
+                            </MenuItem>
+                            <MenuItem onClick={() => { /* Print logic */ handleHeaderMenuClose(); }}>
+                                <PrintIcon sx={{mr:1}} fontSize="small"/> In
+                            </MenuItem>
+                            <MenuItem onClick={() => { handleSave(); handleHeaderMenuClose();}}>
+                                <DownloadIcon sx={{mr:1}} fontSize="small"/> Tải ZIP
+                            </MenuItem>
+                        </Menu>
+                        <IconButton color="inherit" onClick={() => setRightSidebarOpen(true)} sx={{ ml: 1 }}>
+                            <SettingsIcon />
+                        </IconButton>
+                    </>
+                ) : (
+                    <>
+                        <Tooltip title="Lưu thiệp (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><SaveIcon /></IconButton></Tooltip>
+                        <Tooltip title="In thiệp mời (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><PrintIcon /></IconButton></Tooltip>
+                        <Button variant="contained" color="secondary" onClick={handleSave} size="small" startIcon={<DownloadIcon />} sx={{backgroundColor: 'black', '&:hover': {backgroundColor: 'gray'}}}>Tải ZIP</Button>
+                    </>
+                )}
             </Box>
 
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-                {/* Left Sidebar */}
-                <Box sx={{ width: LEFT_SIDEBAR_WIDTH, borderRight: `1px solid ${theme.palette.divider}`, p: 1.5, overflowY: 'auto', bgcolor: 'background.paper', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                    <Button fullWidth variant="text" startIcon={<ArrowBackIcon />} sx={{ justifyContent: 'flex-start', color: 'text.secondary' }}>Trở về</Button>
-                    <Button fullWidth variant="contained" startIcon={<DesignServicesIcon />} sx={{ justifyContent: 'flex-start' }} color="primary">Thiết kế</Button>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="overline" color="text.secondary" sx={{px:1}}>Công cụ</Typography>
-                    <Button fullWidth variant="text" startIcon={<StyleIcon />} onClick={handleOpenTemplatePicker} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Mẫu</Button>
-                    <Button fullWidth variant="text" startIcon={<TextFieldsIcon />} onClick={handleAddText} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Văn bản</Button>
-                    <Button fullWidth variant="text" startIcon={<CloudUploadIcon />} onClick={handleOpenUserImageManagerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Tải ảnh lên</Button>
-                    <Button fullWidth variant="text" startIcon={<ImageIcon />} onClick={handleOpenIconPickerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Icon</Button>
-                    <Button fullWidth variant="text" startIcon={<CategoryIcon />} onClick={handleOpenPatternPickerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Thành phần</Button>
-                    <Button fullWidth variant="text" startIcon={<LabelIcon />} onClick={handleOpenBorderPickerDrawer} sx={{ justifyContent: 'flex-start' }} disabled={!currentPageId}>Tag/Khung</Button>
-                    <FormControlLabel control={<Checkbox checked={showGuidelines} onChange={(e) => setShowGuidelines(e.target.checked)} size="small" />} label="Dòng kẻ" sx={{ mt: 'auto', color:'text.secondary' }} />
-                </Box>
+                {/* Left Sidebar - Desktop */}
+                <Hidden smDown>
+                    <Box sx={{ width: LEFT_SIDEBAR_WIDTH_DESKTOP, borderRight: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink: 0 }}>
+                        {leftSidebarContent}
+                    </Box>
+                </Hidden>
+                {/* Left Sidebar - Mobile Drawer */}
+                <Drawer anchor="left" open={isMobile && leftSidebarOpen} onClose={() => setLeftSidebarOpen(false)} PaperProps={{ sx: { width: MOBILE_DRAWER_WIDTH } }}>
+                    {leftSidebarContent}
+                </Drawer>
+
 
                 {/* Center Stage (Canvas Area) */}
-                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', bgcolor: 'grey.200', p: 1.5, overflow: 'hidden' }}>
+                <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', bgcolor: 'grey.200', p: {xs: 1, sm: 1.5}, overflow: 'hidden' }}>
                     {activeItem && currentPageId && ( 
-                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: 1, borderBottom: `1px solid ${theme.palette.divider}`, gap: 0.5, flexShrink: 0, flexWrap: 'wrap', mb: 1, bgcolor: 'background.paper', borderRadius:1 }}>
-                            <Typography variant="caption" sx={{ mr: 1, flexShrink: 0, fontWeight: 500 }}>
-                                Đối tượng: {activeItem.type === 'text' ? `"${(activeItem as TextItem).content.substring(0, 15)}${(activeItem as TextItem).content.length > 15 ? "..." : ""}"` : 'Ảnh'}
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', p: {xs:0.5, sm:1}, borderBottom: `1px solid ${theme.palette.divider}`, gap: {xs:0.2, sm:0.5}, flexShrink: 0, flexWrap: 'wrap', mb: 1, bgcolor: 'background.paper', borderRadius:1 }}>
+                            <Typography variant="caption" sx={{ mr: {xs:0.5, sm:1}, flexShrink: 0, fontWeight: 500, fontSize: {xs: '0.7rem', sm: 'caption.fontSize'} }}>
+                                Đối tượng: {activeItem.type === 'text' ? `"${(activeItem as TextItem).content.substring(0, 10)}${(activeItem as TextItem).content.length > 10 ? "..." : ""}"` : 'Ảnh'}
                             </Typography>
-                            <Tooltip title="Độ mờ"><OpacityIcon fontSize="small" sx={{ mr: 0.5, color: 'action.active', verticalAlign:'middle' }} /></Tooltip>
-                            <Slider value={activeItem.opacity} onChange={(_e, newValue) => handleUpdateItem(selectedItemId!, { opacity: newValue as number })} min={0} max={1} step={0.01} sx={{ width: 80, mr: 1 }} size="small" />
+                            <Tooltip title="Độ mờ"><OpacityIcon fontSize="small" sx={{ mr: {xs:0.2, sm:0.5}, color: 'action.active', verticalAlign:'middle' }} /></Tooltip>
+                            <Slider value={activeItem.opacity} onChange={(_e, newValue) => handleUpdateItem(selectedItemId!, { opacity: newValue as number })} min={0} max={1} step={0.01} sx={{ width: {xs:60, sm:80}, mr: {xs:0.5, sm:1} }} size="small" />
                             <Tooltip title="Đưa lên trên cùng"><IconButton size="small" onClick={() => handleBringToFront(selectedItemId!)}><FlipToFrontIcon /></IconButton></Tooltip>
                             <Tooltip title="Đưa xuống dưới cùng"><IconButton size="small" onClick={() => handleSendToBack(selectedItemId!)}><FlipToBackIcon /></IconButton></Tooltip>
                             <Tooltip title="Xóa đối tượng"><IconButton size="small" color="error" onClick={() => handleDeleteItem(selectedItemId!)}><DeleteIcon /></IconButton></Tooltip>
                         </Box>
                     )}
-                    <CanvasWrapper ref={canvasWrapperRef} onMouseDown={handleCanvasWrapperMouseDown} onContextMenu={handleCanvasWrapperContextMenu} sx={{ flexGrow: 1, borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}>
+                    <CanvasWrapper ref={canvasWrapperRef} onMouseDown={handleCanvasWrapperMouseDown} onTouchStart={handleCanvasWrapperMouseDown as any} onContextMenu={handleCanvasWrapperContextMenu} sx={{ flexGrow: 1, borderRadius: 1, border: `1px solid ${theme.palette.divider}` }}>
                         {currentPage ? (
                             <CanvasContainer ref={canvasContainerRef}
                                 style={{
@@ -955,90 +1117,48 @@ const WeddingInvitationEditor = () => {
                             </CanvasContainer>
                         ) : (
                             <Box sx={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%'}}>
-                                <Typography variant="h5" color="text.secondary">Vui lòng chọn hoặc thêm một trang.</Typography>
+                                <Typography variant="h5" color="text.secondary" textAlign="center" p={2}>Vui lòng chọn hoặc thêm một trang.</Typography>
                             </Box>
                         )}
                     </CanvasWrapper>
-                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, p: 1, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink: 0, borderRadius: '0 0 4px 4px', mt:1 }}>
+                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: {xs:0.5, sm:1}, p: {xs:0.5, sm:1}, borderTop: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink: 0, borderRadius: '0 0 4px 4px', mt:1 }}>
                         <IconButton onClick={handleZoomOut} disabled={zoomLevel <= MIN_ZOOM || !currentPageId} size="small" aria-label="Thu nhỏ"><ZoomOutIcon /></IconButton>
-                        <Slider value={zoomLevel} onChange={handleZoomSliderChange} min={MIN_ZOOM} max={MAX_ZOOM} step={0.01} sx={{ width: 150, mx: 1 }} size="small" disabled={!currentPageId}/>
-                        <Typography variant="body2" sx={{ minWidth: '50px', textAlign: 'center' }}>{currentPageId ? Math.round(zoomLevel * 100) : 0}%</Typography>
+                        <Slider value={zoomLevel} onChange={handleZoomSliderChange} min={MIN_ZOOM} max={MAX_ZOOM} step={0.01} sx={{ width: {xs:100, sm:150}, mx: {xs:0.5, sm:1} }} size="small" disabled={!currentPageId}/>
+                        <Typography variant="body2" sx={{ minWidth: {xs:'40px', sm:'50px'}, textAlign: 'center' }}>{currentPageId ? Math.round(zoomLevel * 100) : 0}%</Typography>
                         <IconButton onClick={handleZoomIn} disabled={zoomLevel >= MAX_ZOOM || !currentPageId} size="small" aria-label="Phóng to"><ZoomInIcon /></IconButton>
                     </Box>
                 </Box>
 
-                {/* Right Sidebar */}
-                <Box sx={{ width: RIGHT_SIDEBAR_WIDTH, borderLeft: `1px solid ${theme.palette.divider}`, p: 2, overflowY: 'auto', bgcolor: 'background.paper', display:'flex', flexDirection:'column', gap:2 }}>
-                    <Box>
-                        <Typography variant="h6" gutterBottom>Trang thiệp</Typography>
-                        <Box sx={{display:'flex', flexDirection:'column', gap:1, maxHeight: '30vh', overflowY:'auto', mb:1, pr:0.5 }}>
-                            {pages.map((page) => ( 
-                                <Card 
-                                    key={page.id} 
-                                    onClick={() => {setCurrentPageId(page.id); setSelectedItemId(null); setZoomLevel(1); setViewOffset({x:0,y:0});}}
-                                    sx={{ 
-                                        cursor: 'pointer', 
-                                        border: `2px solid ${page.id === currentPageId ? theme.palette.primary.main : theme.palette.divider}`,
-                                        '&:hover': { borderColor: theme.palette.primary.light },
-                                        minHeight: 80,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexDirection: 'column',
-                                        p:1,
-                                        position: 'relative' 
-                                    }}
-                                >
-                                    {page.backgroundImage ? 
-                                        <CardMedia component="img" height="50" image={page.backgroundImage} alt={page.name} sx={{ objectFit: 'contain', maxWidth:'100%' }} 
-                                            onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                                                const target = e.target as HTMLImageElement; target.onerror = null;
-                                                target.style.display = 'none'; 
-                                            }}
-                                        /> : 
-                                        <FileCopyIcon sx={{fontSize: 30, color: 'text.disabled'}}/>
-                                    }
-                                    <Typography variant="caption" sx={{mt:0.5}}>{page.name}</Typography>
-                                    <Typography variant="caption" color="textSecondary" sx={{fontSize: '0.65rem'}}>
-                                        ({page.canvasWidth}x{page.canvasHeight})
-                                    </Typography>
-                                </Card>
-                            ))}
-                        </Box>
-                        <Button startIcon={<AddCircleOutlineIcon />} fullWidth sx={{mt:1}} variant="outlined" size="small" onClick={handleAddPage}>Thêm trang</Button>
+                {/* Right Sidebar - Desktop */}
+                 <Hidden smDown>
+                    <Box sx={{ width: RIGHT_SIDEBAR_WIDTH_DESKTOP, borderLeft: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink:0 }}>
+                       {rightSidebarContent}
                     </Box>
-                    <Divider />
-                    <Box sx={{flexGrow:1, overflowY: 'auto'}}>
-                        <Typography variant="h6" gutterBottom>Thuộc tính</Typography>
-                        {activeItem?.type === 'text' && currentPageId && (
-                            <TextPropertyEditor item={activeItem as TextItem} onUpdate={handleUpdateItem} />
-                        )}
-                        {activeItem?.type === 'image' && currentPageId && (
-                            <ImagePropertyEditor item={activeItem as ImageItem} onUpdate={handleUpdateItem} />
-                        )}
-                        {!selectedItemId && currentPageId && <Typography variant="body2" color="textSecondary" sx={{textAlign:'center', mt:2}}>Chọn đối tượng trên trang hiện tại để sửa.</Typography>}
-                        {!currentPageId && <Typography variant="body2" color="textSecondary" sx={{textAlign:'center', mt:2}}>Vui lòng chọn hoặc thêm một trang để bắt đầu.</Typography>}
-                    </Box>
-                </Box>
+                </Hidden>
+                 {/* Right Sidebar - Mobile Drawer */}
+                <Drawer anchor="right" open={isMobile && rightSidebarOpen} onClose={() => setRightSidebarOpen(false)} PaperProps={{ sx: { width: MOBILE_DRAWER_WIDTH } }}>
+                    {rightSidebarContent}
+                </Drawer>
+
             </Box>
 
             <canvas ref={exportCanvasRef} style={{ display: 'none' }} />
 
             {/* Drawers for Pickers */}
-            <Drawer open={openTemplatePicker} onClose={handleCloseTemplatePicker} anchor="left" PaperProps={{sx: {width: {xs: '80vw', sm: LEFT_SIDEBAR_WIDTH + 60}}}}>
+            <Drawer open={openTemplatePicker} onClose={handleCloseTemplatePicker} anchor="left" PaperProps={{sx: {width: {xs: MOBILE_DRAWER_WIDTH, sm: LEFT_SIDEBAR_WIDTH_DESKTOP + 60}}}}>
                 <Box sx={{ p: 1, boxSizing: 'border-box' }}> <TemplatePicker templates={TEMPLATES} onSelectTemplate={handleSelectTemplate} /> </Box>
             </Drawer>
-            <Drawer open={openIconPickerDrawer} onClose={handleCloseIconPickerDrawer} anchor="left" PaperProps={{sx: {width: {xs: '80vw', sm: LEFT_SIDEBAR_WIDTH + 60}}}}>
+            <Drawer open={openIconPickerDrawer} onClose={handleCloseIconPickerDrawer} anchor="left" PaperProps={{sx: {width: {xs: MOBILE_DRAWER_WIDTH, sm: LEFT_SIDEBAR_WIDTH_DESKTOP + 60}}}}>
                 <Box sx={{ p: 1, boxSizing: 'border-box' }}> <GenericImagePicker images={ICON_IMAGES} onSelectImage={handleAddIconFromPicker} title="Chọn Icon" /> </Box>
             </Drawer>
-            <Drawer open={openUserImageManagerDrawer} onClose={handleCloseUserImageManagerDrawer} anchor="left" PaperProps={{sx: {width: {xs: '80vw', sm: LEFT_SIDEBAR_WIDTH + 80}}}}>
+            <Drawer open={openUserImageManagerDrawer} onClose={handleCloseUserImageManagerDrawer} anchor="left" PaperProps={{sx: {width: {xs: MOBILE_DRAWER_WIDTH, sm: LEFT_SIDEBAR_WIDTH_DESKTOP + 80}}}}>
                 <Box sx={{ p: 1, boxSizing: 'border-box' }}> <UserImageManager userImages={userUploadedImages} onSelectUserImage={handleAddUserImageToCanvas} onImageUploaded={handleUserImageFileUpload} /> </Box>
             </Drawer>
-            <Drawer open={openPatternPickerDrawer} onClose={handleClosePatternPickerDrawer} anchor="left" PaperProps={{sx: {width: {xs: '80vw', sm: LEFT_SIDEBAR_WIDTH + 60}}}}>
-                <Box sx={{ p: 1, boxSizing: 'border-box' }}> <GenericImagePicker images={COMPONENT_IMAGES} onSelectImage={handleAddPatternImageFromPicker} title="Chọn Hoạ tiết" /> </Box>
+            <Drawer open={openPatternPickerDrawer} onClose={handleClosePatternPickerDrawer} anchor="left" PaperProps={{sx: {width: {xs: MOBILE_DRAWER_WIDTH, sm: LEFT_SIDEBAR_WIDTH_DESKTOP + 60}}}}>
+                <Box sx={{ p: 1, boxSizing: 'border-box' }}> <GenericImagePicker images={COMPONENT_IMAGES} onSelectImage={handleAddPatternImageFromPicker} title="Chọn Thành Phần" /> </Box>
             </Drawer>
-            <Drawer open={openBorderPickerDrawer} onClose={handleCloseBorderPickerDrawer} anchor="left" PaperProps={{sx: {width: {xs: '80vw', sm: LEFT_SIDEBAR_WIDTH + 60}}}}>
-                <Box sx={{ p: 1, boxSizing: 'border-box' }}> <GenericImagePicker images={TAG_IMAGES} onSelectImage={handleAddBorderImageFromPicker} title="Chọn Khung viền" /> </Box>
+            <Drawer open={openBorderPickerDrawer} onClose={handleCloseBorderPickerDrawer} anchor="left" PaperProps={{sx: {width: {xs: MOBILE_DRAWER_WIDTH, sm: LEFT_SIDEBAR_WIDTH_DESKTOP + 60}}}}>
+                <Box sx={{ p: 1, boxSizing: 'border-box' }}> <GenericImagePicker images={TAG_IMAGES} onSelectImage={handleAddBorderImageFromPicker} title="Chọn Tag/Khung" /> </Box>
             </Drawer>
         </Box>
     );
