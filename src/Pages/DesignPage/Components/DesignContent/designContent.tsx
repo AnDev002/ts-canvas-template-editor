@@ -4,7 +4,7 @@ import type { PanInfo } from 'framer-motion';
 import { v4 as uuidv4 } from 'uuid';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import { Box, Typography, Card, CardContent, CardMedia, Grid, IconButton, Drawer, Select, MenuItem, InputLabel, FormControl, Slider, Checkbox, FormControlLabel, Tooltip, Divider, Menu, Hidden, useMediaQuery } from '@mui/material';
+import { Box, Typography, Card, CardContent, CardMedia, Grid, IconButton, Drawer, Select, MenuItem, InputLabel, FormControl, Slider, Checkbox, FormControlLabel, Tooltip, Divider, Menu, useMediaQuery } from '@mui/material'; // Removed Hidden
 import { styled, useTheme, alpha } from '@mui/material/styles';
 import {
     TextFields as TextFieldsIcon,
@@ -1017,9 +1017,9 @@ const WeddingInvitationEditor = () => {
                 )}
                 <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', letterSpacing: '0.5px', fontSize: {xs: '1rem', sm: '1.25rem'} }}>Image Canvas</Typography>
                 
-                <Hidden smDown>
+                {!isMobile && (
                      <Button startIcon={<PeopleAltIcon />} variant="outlined" size="small" sx={{ ml: 2, color: 'black', borderColor: alpha(theme.palette.common.black, 0.23), '&:hover': {borderColor: theme.palette.common.black} }}>QL Khách mời</Button>
-                </Hidden>
+                )}
 
                 <Typography variant="body2" sx={{ ml: 'auto', mr: {xs:1, sm:2}, fontStyle: 'italic', display: {xs: 'none', md: 'block'} }}>{currentPage?.name || "Thiệp không tên"}</Typography>
                 
@@ -1061,11 +1061,11 @@ const WeddingInvitationEditor = () => {
 
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
                 {/* Left Sidebar - Desktop */}
-                <Hidden smDown>
+                {!isMobile && (
                     <Box sx={{ width: LEFT_SIDEBAR_WIDTH_DESKTOP, borderRight: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink: 0 }}>
                         {leftSidebarContent}
                     </Box>
-                </Hidden>
+                )}
                 {/* Left Sidebar - Mobile Drawer */}
                 <Drawer anchor="left" open={isMobile && leftSidebarOpen} onClose={() => setLeftSidebarOpen(false)} PaperProps={{ sx: { width: MOBILE_DRAWER_WIDTH } }}>
                     {leftSidebarContent}
@@ -1130,11 +1130,11 @@ const WeddingInvitationEditor = () => {
                 </Box>
 
                 {/* Right Sidebar - Desktop */}
-                 <Hidden smDown>
+                {!isMobile && (
                     <Box sx={{ width: RIGHT_SIDEBAR_WIDTH_DESKTOP, borderLeft: `1px solid ${theme.palette.divider}`, bgcolor: 'background.paper', flexShrink:0 }}>
                        {rightSidebarContent}
                     </Box>
-                </Hidden>
+                )}
                  {/* Right Sidebar - Mobile Drawer */}
                 <Drawer anchor="right" open={isMobile && rightSidebarOpen} onClose={() => setRightSidebarOpen(false)} PaperProps={{ sx: { width: MOBILE_DRAWER_WIDTH } }}>
                     {rightSidebarContent}
