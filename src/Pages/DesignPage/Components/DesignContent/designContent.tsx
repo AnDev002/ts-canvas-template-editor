@@ -883,15 +883,15 @@ const WeddingInvitationEditor = () => {
     const activeItem = currentPage ? currentItems.find(i => i.id === selectedItemId) : null;
 
     return (
-        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column', fontFamily: 'Inter, sans-serif', bgcolor: 'grey.100' }}>
+        <Box sx={{ display: 'flex', height: '100vh', flexDirection: 'column', fontFamily: 'Inter, sans-serif', bgcolor: 'white' }}>
             {/* Top Header */}
-            <Box sx={{ display: 'flex', alignItems: 'center', p: '4px 16px', backgroundColor: '#4A148C', color: 'white', flexShrink: 0, boxShadow: 2, height: 56 }}>
-                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>inviti Pro</Typography>
-                <Button startIcon={<PeopleAltIcon />} variant="outlined" size="small" sx={{ ml: 2, color: 'white', borderColor: alpha(theme.palette.common.white, 0.5), '&:hover': {borderColor: theme.palette.common.white} }}>QL Khách mời</Button>
+            <Box sx={{ display: 'flex', alignItems: 'center', p: '4px 16px', backgroundColor: 'white', color: 'black', flexShrink: 0, boxShadow: 2, height: 56 }}>
+                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', letterSpacing: '0.5px' }}>Image Canvas</Typography>
+                <Button startIcon={<PeopleAltIcon />} variant="outlined" size="small" sx={{ ml: 2, color: 'black', borderColor: alpha(theme.palette.common.white, 0.5), '&:hover': {borderColor: theme.palette.common.white} }}>QL Khách mời</Button>
                 <Typography variant="body2" sx={{ ml: 'auto', mr: 2, fontStyle: 'italic' }}>{currentPage?.name || "Thiệp không tên"}</Typography>
-                <Tooltip title="Lưu thiệp (chưa hoạt động)"><IconButton size="small" sx={{color: 'white'}}><SaveIcon /></IconButton></Tooltip>
-                <Tooltip title="In thiệp mời (chưa hoạt động)"><IconButton size="small" sx={{color: 'white'}}><PrintIcon /></IconButton></Tooltip>
-                <Button variant="contained" color="secondary" onClick={handleSave} size="small" startIcon={<DownloadIcon />} sx={{backgroundColor: '#7B1FA2', '&:hover': {backgroundColor: '#6A1B9A'}}}>Tải ZIP</Button>
+                <Tooltip title="Lưu thiệp (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><SaveIcon /></IconButton></Tooltip>
+                <Tooltip title="In thiệp mời (chưa hoạt động)"><IconButton size="small" sx={{color: 'black'}}><PrintIcon /></IconButton></Tooltip>
+                <Button variant="contained" color="secondary" onClick={handleSave} size="small" startIcon={<DownloadIcon />} sx={{backgroundColor: 'black', '&:hover': {backgroundColor: 'gray'}}}>Tải ZIP</Button>
             </Box>
 
             <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
