@@ -402,7 +402,7 @@ const ImagePropertyEditor = ({ item, onUpdate }: { item: ImageItem, onUpdate: (i
 
 
 // Main Wedding Invitation Editor Component
-const WeddingInvitationEditorContent = () => {
+const WeddingInvitationEditor = () => {
     const theme = useTheme(); // Use theme from ThemeProvider
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTabletOrSmaller = useMediaQuery(theme.breakpoints.down('lg')); // Covers xs, sm, md
