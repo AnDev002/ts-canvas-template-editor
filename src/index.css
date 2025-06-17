@@ -1,0 +1,141 @@
+/* 1. Thêm font SVN-Gilroy (giả sử file font đặt tại /fonts/SVN-Gilroy.woff2) */
+@font-face {
+    font-family: 'SVN-Gilroy';
+    src: url('/fonts/SVN-Gilroy.woff2') format('woff2'),
+         url('/fonts/SVN-Gilroy.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  /* 2. Áp dụng font cho toàn bộ website */
+  body,
+  h1, h2, h3, h4, h5, h6,
+  p,
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  label,
+  div,
+  span {
+    font-family: 'SVN-Gilroy', sans-serif !important;
+  }
+  
+  .top-bar-container {
+      font-family: 'SVN-Gilroy', sans-serif;
+    }
+    
+    .announcement-banner {
+      width: 100%;
+      background-color: #EAF2F9;
+      text-align: center;
+      padding: 10px 0;
+      font-size: 14px;
+      color: #333;
+    }
+    
+    .announcement-banner a {
+      color: #007bff;
+      text-decoration: none;
+    }
+    
+    .announcement-banner a:hover {
+      text-decoration: underline;
+    }
+    
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      background-color: #fff;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .header-left {
+      display: flex;
+      align-items: center;
+    }
+    
+    .logo {
+      font-weight: bold;
+      font-size: 24px;
+      margin-right: 20px;
+      padding: 10px 20px; /* To mimic the gray background in the image */
+      background-color: #f0f0f0;
+    }
+    
+    .pro-link {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      font-size: 16px;
+    }
+    
+    .pro-link:hover {
+      color: #007bff;
+    }
+    
+    .header-right {
+      display: flex;
+      align-items: center;
+    }
+    
+    .search-input {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-right: 15px;
+      font-size: 14px;
+      width: 200px; /* Adjust as needed */
+    }
+    
+    .auth-link {
+      text-decoration: none;
+      color: #333;
+      margin-left: 15px;
+      font-size: 14px;
+    }
+    
+    .auth-link:hover {
+      color: #007bff;
+    }
+    
+    .navigation-bar {
+      background-color: #fff;
+      padding: 10px 0;
+      border-top: 1px solid #eee;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .navigation-bar nav {
+      display: flex;
+      justify-content: center;
+    }
+    
+    .nav-links {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+    }
+    
+    .nav-links li {
+      margin: 0 20px;
+    }
+    
+    .nav-links a {
+      text-decoration: none;
+      color: #555;
+      font-weight: bold;
+      font-size: 15px;
+      white-space: nowrap; /* Prevent wrapping for navigation links */
+    }
+    
+    .nav-links a:hover {
+      color: #007bff;
+    }
+
+    
