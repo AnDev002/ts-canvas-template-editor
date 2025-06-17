@@ -4,7 +4,7 @@
 
 .announcement-banner {
   width: 100%;
-  background-color: #eaf2f9;
+  background-color: #d0d4e4;
   text-align: center;
   padding: 10px 0;
   font-size: 14px;
@@ -12,7 +12,7 @@
 }
 
 .announcement-banner a {
-  color: #007bff;
+  color: #000;
   text-decoration: none;
 }
 
@@ -84,32 +84,43 @@
   padding: 10px 0;
   border-top: 1px solid #eee;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  /* Đảm bảo không chiếm toàn bộ chiều ngang */
 }
 
-.navigation-bar nav {
+.nav-bar-content {
+  width: 100%;
+  max-width: 1520px; /* Giống .header-row */
+  margin-left: auto;
+  margin-right: auto;
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 0; /* Nếu cần căn sát logo */
+  padding-right: 0;
+  /* Responsive: co lại khi màn hình nhỏ */
+  box-sizing: border-box;
 }
 
 .nav-links {
   list-style: none;
   padding: 0;
   margin: 0;
+  width: 100%;
   display: flex;
+  justify-content: space-between; /* Cách đều các link */
 }
 
 .nav-links li {
-  margin: 0 20px;
+  margin: 0; /* Xóa margin cũ để flex tự chia đều */
 }
 
-.nav-links a {
-  text-decoration: none;
-  color: #555;
-  font-weight: bold;
-  font-size: 15px;
-  white-space: nowrap; /* Prevent wrapping for navigation links */
-}
-
-.nav-links a:hover {
-  color: #007bff;
+/* Responsive: co lại ở màn hình nhỏ */
+@media (max-width: 1600px) {
+  .header-row,
+  .nav-bar-content {
+    max-width: 98vw;
+    width: 100%;
+    padding-left: 16px;
+    padding-right: 16px;
+  }
 }
